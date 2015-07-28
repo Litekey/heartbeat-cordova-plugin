@@ -16,14 +16,14 @@ Install
 Methods
 -------
 
-- heartbeat.take
+- take
 
-heartbeat.take
+take()
 ==============
 
 Get the current bpm. Turn light on and take a few seconds for detect the heart rate.
 
-Works on cordova
+Use it
 ----------------
 
 	function successCallback(bpm){
@@ -36,12 +36,36 @@ Works on cordova
 
     cordova.plugins.heartbeat.take(successCallback, errorCallback);
 
-Works on ngCordova
+Use it with ngCordova
 ------------------
 
-	app.controller('HeartBeatController', function (cordovaHeartBeat) {
-                    
+**Define plugin:**
 
+
+    angular.module('ngCordova.plugins.heartbeat', []).factory('$cordovaHeartBeat', ['$q', '$window', function ($q, $window) {
+
+        return {        
+            take: function () {
+                var q = $q.defer();
+
+                $window.cordova.plugins.heartbeat.take(
+                    function (bpm) {
+                        q.resolve(bpm);
+                    }, function (error) {
+                        q.reject(err);
+                    }
+                );
+
+                return q.promise;
+            }
+        };
+        
+    }]);
+
+**Use plugin:**
+
+	app.controller('HeartBeatController', function (cordovaHeartBeat) {
+       
         $cordovaHeartBeat.take().then(
             function(bpm){
                 console.log("Your heart beat per minute is:" + bpm);

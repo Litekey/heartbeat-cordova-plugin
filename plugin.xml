@@ -4,6 +4,8 @@
         version="0.0.1">
 
   <name>HeartBeat</name>
+  <description>Cordova Heart Beat Monitor</description>
+  <keywords>cordova,heart beat,heart rate,bpm</keywords>
 
   <engines>
     <engine name="cordova" version=">=3.4.0"/>
