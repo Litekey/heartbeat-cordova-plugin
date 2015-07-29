@@ -16,9 +16,12 @@
     [self.commandDelegate runInBackground: ^{
     
         NSString* callbackId = [command callbackId];
+        NSArray* arguments = command.arguments;
         
         CDVHeartBeatDetection* heartBeatDetection = [[CDVHeartBeatDetection alloc] init];
         heartBeatDetection.delegate = self;
+        heartBeatDetection.seconds = [[arguments objectAtIndex:0] intValue];
+        heartBeatDetection.fps = [[arguments objectAtIndex:1] intValue];
         self.detecting = true;
         [heartBeatDetection startDetection];
         

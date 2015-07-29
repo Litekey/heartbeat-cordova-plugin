@@ -1,9 +1,6 @@
 #import "CDVHeartBeatDetection.h"
 #import <AVFoundation/AVFoundation.h>
 
-const int FRAMES_PER_SECOND = 30;
-const int SECONDS = 10;
-
 @interface CDVHeartBeatDetection() <AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property (nonatomic, strong) AVCaptureSession *session;
@@ -50,7 +47,7 @@ const int SECONDS = 10;
         NSArray *ranges = format.videoSupportedFrameRateRanges;
         AVFrameRateRange *frameRates = ranges[0];
         
-        if (frameRates.maxFrameRate == FRAMES_PER_SECOND && (!currentFormat || (CMVideoFormatDescriptionGetDimensions(format.formatDescription).width < CMVideoFormatDescriptionGetDimensions(currentFormat.formatDescription).width && CMVideoFormatDescriptionGetDimensions(format.formatDescription).height < CMVideoFormatDescriptionGetDimensions(currentFormat.formatDescription).height)))
+        if (frameRates.maxFrameRate == self.fps && (!currentFormat || (CMVideoFormatDescriptionGetDimensions(format.formatDescription).width < CMVideoFormatDescriptionGetDimensions(currentFormat.formatDescription).width && CMVideoFormatDescriptionGetDimensions(format.formatDescription).height < CMVideoFormatDescriptionGetDimensions(currentFormat.formatDescription).height)))
         {
             currentFormat = format;
         }
@@ -59,8 +56,8 @@ const int SECONDS = 10;
     [captureDevice lockForConfiguration:nil];
     captureDevice.torchMode=AVCaptureTorchModeOn;
     captureDevice.activeFormat = currentFormat;
-    captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, FRAMES_PER_SECOND);
-    captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, FRAMES_PER_SECOND);
+    captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, self.fps);
+    captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, self.fps);
     [captureDevice unlockForConfiguration];
     
     AVCaptureVideoDataOutput* videoOutput = [[AVCaptureVideoDataOutput alloc] init];
@@ -131,17 +128,17 @@ const int SECONDS = 10;
     
     [self.dataPointsHue addObject:@(hue)];
     
-    if (self.dataPointsHue.count % FRAMES_PER_SECOND == 0)
+    if (self.dataPointsHue.count % self.fps == 0)
     {
         if (self.delegate)
         {
-            float displaySeconds = self.dataPointsHue.count / FRAMES_PER_SECOND;
+            float displaySeconds = self.dataPointsHue.count / self.fps;
             
             NSArray *bandpassFilteredItems = butterworthBandpassFilter(self.dataPointsHue);
             NSArray *smoothedBandpassItems = medianSmoothing(bandpassFilteredItems);
             int peakCount = countPeaks(smoothedBandpassItems);
             
-            float secondsPassed = smoothedBandpassItems.count / FRAMES_PER_SECOND;
+            float secondsPassed = smoothedBandpassItems.count / self.fps;
             float percentage = secondsPassed / 60;
             float heartRate = peakCount / percentage;
             
@@ -153,7 +150,7 @@ const int SECONDS = 10;
     
     CVPixelBufferUnlockBaseAddress(cvimgRef,0);
     
-    if (self.dataPointsHue.count == (SECONDS * FRAMES_PER_SECOND))
+    if (self.dataPointsHue.count == (self.seconds * self.fps))
     {
         [self stopDetection];
     }

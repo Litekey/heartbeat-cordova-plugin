@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <plugin xmlns="http://www.phonegap.com/ns/plugins/1.0"
         id="com.litekey.cordova.plugins.heartbeat"
-        version="0.0.1">
+        version="0.1.0">
 
   <name>HeartBeat</name>
   <description>Cordova Heart Beat Monitor</description>
-  <keywords>cordova,heart beat,heart rate,bpm</keywords>
+  <keywords>cordova,heart,beat,rate,bpm</keywords>
+  <repo>https://github.com/Litekey/heartbeat-cordova-plugin</repo>
 
   <engines>
     <engine name="cordova" version=">=3.4.0"/>
@@ -26,6 +27,7 @@
     </config-file>
 
     <source-file src="src/android/HeartBeatPlugin.java" target-dir="src/com/litekey/cordova/plugins/heartbeat/"/>
+     <source-file src="src/android/HeartBeatDetection.java" target-dir="src/com/litekey/cordova/plugins/heartbeat/"/>
     <source-file src="src/android/CameraActivity.java" target-dir="src/com/litekey/cordova/plugins/heartbeat/"/>
     <source-file src="src/android/ForegroundCameraPreview.java" target-dir="src/com/litekey/cordova/plugins/heartbeat/"/>
     <source-file src="src/android/foregroundcamera.xml" target-dir="res/layout"/>
@@ -33,8 +35,9 @@
     <config-file target="AndroidManifest.xml" parent="/manifest/application">
       <activity 
           android:label="HeartBeat" 
-          android:name="com.litekey.cordova.plugins.heartbeat.CameraActivity" 
-          android:screenOrientation="landscape" 
+          android:name="com.litekey.cordova.plugins.heartbeat.CameraActivity"
+          android:configChanges="keyboardHidden" 
+          android:exported="false"
           android:theme="@android:style/Theme.Translucent.NoTitleBar">
       </activity>
     </config-file>

@@ -14,47 +14,65 @@ public class HeartBeatPlugin extends CordovaPlugin {
 
     private static final String TAG = HeartBeatPlugin.class.getSimpleName();
     public static final int REQUEST_CODE = 0x03A070A73;
-    
+    public static final String SECONDS_KEY = "seconds";
+    public static final String FPS_KEY = "fps";
+    public static final String BPM_KEY = "bpm";
+
     private CallbackContext callback;
 
     @Override
     public boolean execute(String action, JSONArray data,
             CallbackContext callbackContext) throws JSONException {
         this.callback = callbackContext;
-       
 
         if (action.equals("take")) {
-            take();
+            take(data.getInt(0), data.getInt(1));
             PluginResult r = new PluginResult(PluginResult.Status.NO_RESULT);
             r.setKeepCallback(true);
-            callbackContext.sendPluginResult(r);            
+            callbackContext.sendPluginResult(r);
         } else {
             return false;
         }
         return true;
     }
 
-    private void take() {
-        Intent intent = new Intent(this.cordova.getActivity().getApplicationContext(), CameraActivity.class);
-        intent.addCategory(Intent.CATEGORY_DEFAULT);
-        intent.setPackage(this.cordova.getActivity().getApplicationContext().getPackageName());
-        this.cordova.startActivityForResult((CordovaPlugin) this, intent, REQUEST_CODE);
+    private void take(final int seconds, final int fps) {
+        this.cordova.getThreadPool().execute(new Runnable() {
+
+            @Override
+            public void run() {
+                Intent intent = new Intent(cordova.getActivity()
+                        .getApplicationContext(), CameraActivity.class);
+                intent.addCategory(Intent.CATEGORY_DEFAULT);
+                intent.setPackage(cordova.getActivity().getApplicationContext()
+                        .getPackageName());
+                intent.putExtra(SECONDS_KEY, seconds);
+                intent.putExtra(FPS_KEY, fps);
+                cordova.startActivityForResult(
+                        (CordovaPlugin) HeartBeatPlugin.this, intent,
+                        REQUEST_CODE);
+            }
+        });
+
     }
-    
+
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
-        Log.i(TAG, "REQUEST_CODE: " + REQUEST_CODE + ", RESULT_OK: " + Activity.RESULT_OK);
+        Log.i(TAG, "REQUEST_CODE: " + REQUEST_CODE + ", RESULT_OK: "
+                + Activity.RESULT_OK);
         Log.i(TAG, "ActivityResult: " + requestCode + " : " + resultCode);
-        if(requestCode == REQUEST_CODE){            
-            if(resultCode == Activity.RESULT_OK){
-                String bpm = Integer.toString(intent.getIntExtra("bpm", 0));
-                Log.i(TAG, "Result: " + bpm);               
-                this.callback.sendPluginResult(new PluginResult(PluginResult.Status.OK, bpm));
+        if (requestCode == REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK) {
+                String bpm = Integer.toString(intent.getIntExtra(BPM_KEY, 0));
+                Log.i(TAG, "Result: " + bpm);
+                this.callback.sendPluginResult(new PluginResult(
+                        PluginResult.Status.OK, bpm));
             } else {
-                this.callback.sendPluginResult(new PluginResult(PluginResult.Status.ERROR));
+                this.callback.sendPluginResult(new PluginResult(
+                        PluginResult.Status.ERROR));
             }
-        }       
+        }
     }
-    
+
 }

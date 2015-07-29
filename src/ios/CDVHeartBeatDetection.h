@@ -9,6 +9,8 @@
 @interface CDVHeartBeatDetection : NSObject
 
 @property (nonatomic, weak) id<CDVHeartBeatDetectionDelegate> delegate;
+@property (nonatomic, assign) int seconds;
+@property (nonatomic, assign) int fps;
 
 - (void)startDetection;
 - (void)stopDetection;

@@ -18,7 +18,7 @@ Methods
 
 - take
 
-take()
+take (Method)
 ==============
 
 Get the current bpm. Turn light on and take a few seconds for detect the heart rate.
@@ -34,39 +34,24 @@ Use it
         alert("Has not posible measure your heart beat");
     }
 
-    cordova.plugins.heartbeat.take(successCallback, errorCallback);
+    var props = {
+        seconds: 10,
+        fps: 30
+    };
+
+    cordova.plugins.heartbeat.take(props, successCallback, errorCallback);
 
 Use it with ngCordova
 ------------------
 
-**Define plugin:**
-
-
-    angular.module('ngCordova.plugins.heartbeat', []).factory('$cordovaHeartBeat', ['$q', '$window', function ($q, $window) {
-
-        return {        
-            take: function () {
-                var q = $q.defer();
-
-                $window.cordova.plugins.heartbeat.take(
-                    function (bpm) {
-                        q.resolve(bpm);
-                    }, function (error) {
-                        q.reject(err);
-                    }
-                );
-
-                return q.promise;
-            }
-        };
+	app.controller('HeartBeatController', function ($cordovaHeartBeat) {
         
-    }]);
+        var props = {
+            seconds: 10,
+            fps: 30
+        };
 
-**Use plugin:**
-
-	app.controller('HeartBeatController', function (cordovaHeartBeat) {
-       
-        $cordovaHeartBeat.take().then(
+        $cordovaHeartBeat.take(props).then(
             function(bpm){
                 console.log("Your heart beat per minute is:" + bpm);
             }, function(error){
@@ -75,6 +60,11 @@ Use it with ngCordova
         );
         
     });
+
+Properties
+-------------------
+- seconds: It indicates how many seconds the heart rate will monitor. For more fps more precision in heart rate measure. If the value is not setted the default is 10.
+- fps: It indicates how many frames per seconds the heart rate will monitor. For more fps more precision in heart rate measure. If the value is not setted the default is 30.
 
 Supported Platforms
 -------------------
