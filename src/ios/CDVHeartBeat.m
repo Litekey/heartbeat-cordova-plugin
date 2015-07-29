@@ -33,10 +33,9 @@
         
         int bpm = [((NSNumber*)self.bpms[self.bpms.count/2]) intValue];
         
-        NSString* msg = [NSString stringWithFormat: @"%i", bpm];
         CDVPluginResult* result = [CDVPluginResult
                                    resultWithStatus:CDVCommandStatus_OK
-                                   messageAsString:msg];
+                                   messageAsInt:bpm];
         
         [self.commandDelegate sendPluginResult:result callbackId:callbackId];
     

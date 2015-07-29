@@ -58,13 +58,10 @@ public class HeartBeatPlugin extends CordovaPlugin {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        super.onActivityResult(requestCode, resultCode, intent);
-        Log.i(TAG, "REQUEST_CODE: " + REQUEST_CODE + ", RESULT_OK: "
-                + Activity.RESULT_OK);
-        Log.i(TAG, "ActivityResult: " + requestCode + " : " + resultCode);
+        super.onActivityResult(requestCode, resultCode, intent);        
         if (requestCode == REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK) {
-                String bpm = Integer.toString(intent.getIntExtra(BPM_KEY, 0));
+                int bpm = intent.getIntExtra(BPM_KEY, 0);
                 Log.i(TAG, "Result: " + bpm);
                 this.callback.sendPluginResult(new PluginResult(
                         PluginResult.Status.OK, bpm));

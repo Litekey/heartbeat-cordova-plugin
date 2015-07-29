@@ -69,8 +69,7 @@ public class HeartBeatDetection {
 			int peakCount = countPeaks(smoothedBandpassItems);
 			double secondsPassed = smoothedBandpassItems.length / fps;
 			double percentage = secondsPassed / 60;
-			int bpm = (int) (peakCount / percentage);
-			Log.i(TAG, "Actual bpm:" + bpm);
+			int bpm = (int) (peakCount / percentage);			
 			bpms.add(bpm);
 		}
 
@@ -79,7 +78,6 @@ public class HeartBeatDetection {
 	public int getHeartBeat() {
 		Collections.sort(bpms);
 		int bpm = bpms.get(bpms.size() / 2);
-		Log.i(TAG, "Result bpm:" + bpm);
 		return bpm;
 	}
 
