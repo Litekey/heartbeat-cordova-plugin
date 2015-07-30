@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import android.graphics.Color;
 import android.hardware.Camera;
+import android.util.Log;
 
 public class HeartBeatDetection {
-	
-	private final Object monitor = new Object(); 
+
+	private final Object monitor = new Object();
 
 	private int width;
 	private int height;
@@ -18,13 +18,13 @@ public class HeartBeatDetection {
 	private double scaleFactor;
 
 	private List<Float> dataPointsHue;
-	private int[] rgb;	
+	private int[] rgb;
 
 	public HeartBeatDetection(Camera camera) {
 		width = camera.getParameters().getPreviewSize().width;
 		height = camera.getParameters().getPreviewSize().height;
-		widthScaleFactor = 2;
-		heightScaleFactor = 2;
+		widthScaleFactor = 4;
+		heightScaleFactor = 4;
 		dataPointsHue = new ArrayList<Float>();
 		scaleFactor = ((double) (width * height) / (double) (heightScaleFactor * widthScaleFactor));
 		rgb = new int[width * height];
@@ -35,7 +35,7 @@ public class HeartBeatDetection {
 
 			decodeYUV420SP(rgb, frame, width, height);
 
-			int r = 0, g = 0, b = 0;
+			float r = 0, g = 0, b = 0;
 
 			for (int y = 0; y < height; y += heightScaleFactor) {
 				for (int x = 0; x < width; x += widthScaleFactor) {
@@ -45,13 +45,19 @@ public class HeartBeatDetection {
 				}
 			}
 
-			r /= scaleFactor;
-			g /= scaleFactor;
-			b /= scaleFactor;
+			r /= 255.0 * scaleFactor;
+			g /= 255.0 * scaleFactor;
+			b /= 255.0 * scaleFactor;
+
+			Log.i("BPM: ", "r: " + r + ", g: " + g + ", b: " + b);
 
 			float[] hsv = new float[3];
-			Color.RGBToHSV(r, g, b, hsv);
+			RGBtoHSV(r, g, b, hsv);
 			dataPointsHue.add(hsv[0]);
+
+			Log.i("BPM: ", "h: " + hsv[0] + ", s: " + hsv[1] + ", v: " + hsv[2]);
+
+			Log.i("BPM", "Curren hue: " + hsv[0]);
 		}
 	}
 
@@ -64,9 +70,15 @@ public class HeartBeatDetection {
 			float[] bandpassFilteredItems = butterworthBandpassFilter(dataHue);
 			float[] smoothedBandpassItems = medianSmoothing(bandpassFilteredItems);
 			int peakCount = countPeaks(smoothedBandpassItems);
-			double secondsPassed = smoothedBandpassItems.length / fps;
-			double percentage = secondsPassed / 60;
+			double secondsPassed = (double) smoothedBandpassItems.length
+					/ (double) fps;
+			double percentage = secondsPassed / 60.0;
+
+			Log.i("BPM", "seconds: " + secondsPassed);
+
 			int bpm = (int) (peakCount / percentage);
+			Log.i("BPM", "Curren bpm: " + bpm);
+
 			return bpm;
 		}
 	}
@@ -107,6 +119,30 @@ public class HeartBeatDetection {
 						| ((g >> 2) & 0xff00) | ((b >> 10) & 0xff);
 			}
 		}
+	}
+
+	private void RGBtoHSV(float r, float g, float b, float[] hsv) {
+		float min, max, delta;
+		min = Math.min(r, Math.min(g, b));
+		max = Math.max(r, Math.max(g, b));
+		hsv[2] = max;
+		delta = max - min;
+		if (max != 0)
+			hsv[1] = delta / max;
+		else {
+			hsv[1] = 0;
+			hsv[0] = -1;
+			return;
+		}
+		if (r == max)
+			hsv[0] = (g - b) / delta;
+		else if (g == max)
+			hsv[0] = 2 + (b - r) / delta;
+		else
+			hsv[0] = 4 + (r - g) / delta;
+		hsv[0] *= 60;
+		if (hsv[0] < 0)
+			hsv[0] += 360;
 	}
 
 	/**

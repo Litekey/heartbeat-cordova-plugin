@@ -7,7 +7,6 @@ import java.util.List;
 import org.apache.cordova.CordovaActivity;
 
 import android.content.Intent;
-import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
@@ -41,10 +40,10 @@ public class CameraActivity extends CordovaActivity {
 		try {
 			Camera.Parameters params = camera.getParameters();
 			params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-			params.setPreviewFormat(ImageFormat.YV12);
+			//params.setPreviewFormat(ImageFormat.YV12);
 			params.setPreviewFpsRange(fps * 1000, fps * 1000);
 			Size size = params.getSupportedPreviewSizes().get(
-					params.getSupportedPreviewSizes().size() - 1);
+					params.getSupportedPreviewSizes().size() - 2);
 			params.setPreviewSize(size.width, size.height);
 			camera.setParameters(params);
 			camera.setPreviewCallbackWithBuffer(previewCallback);
