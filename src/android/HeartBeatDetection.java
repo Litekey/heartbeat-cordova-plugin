@@ -2,87 +2,73 @@ package com.litekey.cordova.plugins.heartbeat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import android.graphics.Color;
 import android.hardware.Camera;
-import android.util.Log;
 
 public class HeartBeatDetection {
-
-	private static final String TAG = HeartBeatDetection.class.getSimpleName();
+	
+	private final Object monitor = new Object(); 
 
 	private int width;
 	private int height;
 	private int widthScaleFactor;
 	private int heightScaleFactor;
 	private double scaleFactor;
-	private int fps;
 
 	private List<Float> dataPointsHue;
-	private List<Integer> bpms;
-	private int[] rgb;
+	private int[] rgb;	
 
 	public HeartBeatDetection(Camera camera) {
 		width = camera.getParameters().getPreviewSize().width;
 		height = camera.getParameters().getPreviewSize().height;
-		widthScaleFactor = camera.getParameters()
-				.getPreferredPreviewSizeForVideo().width;
-		heightScaleFactor = camera.getParameters()
-				.getPreferredPreviewSizeForVideo().height;
-		int[] range = new int[2];
-		camera.getParameters().getPreviewFpsRange(range);
-		fps = range[0] / 1000;
+		widthScaleFactor = 2;
+		heightScaleFactor = 2;
 		dataPointsHue = new ArrayList<Float>();
-		bpms = new ArrayList<Integer>();
-
 		scaleFactor = ((double) (width * height) / (double) (heightScaleFactor * widthScaleFactor));
 		rgb = new int[width * height];
 	}
 
 	public void analyzeFrame(byte[] frame) {
+		synchronized (monitor) {
 
-		decodeYUV420SP(rgb, frame, width, height);
-		int r = 0, g = 0, b = 0;
+			decodeYUV420SP(rgb, frame, width, height);
 
-		for (int y = 0; y < height; y += heightScaleFactor) {
-			for (int x = 0; x < width; x += widthScaleFactor) {
-				r += (rgb[(y * width) + x] >> 16) & 0x0ff;
-				g += (rgb[(y * width) + x] >> 8) & 0x0ff;
-				b += rgb[(y * width) + x] & 0x0ff;
+			int r = 0, g = 0, b = 0;
+
+			for (int y = 0; y < height; y += heightScaleFactor) {
+				for (int x = 0; x < width; x += widthScaleFactor) {
+					r += (rgb[(y * width) + x] >> 16) & 0x0ff;
+					g += (rgb[(y * width) + x] >> 8) & 0x0ff;
+					b += rgb[(y * width) + x] & 0x0ff;
+				}
 			}
+
+			r /= scaleFactor;
+			g /= scaleFactor;
+			b /= scaleFactor;
+
+			float[] hsv = new float[3];
+			Color.RGBToHSV(r, g, b, hsv);
+			dataPointsHue.add(hsv[0]);
 		}
+	}
 
-		r /= scaleFactor;
-		g /= scaleFactor;
-		b /= scaleFactor;
-
-		float[] hsv = new float[3];
-		Color.RGBToHSV(r, g, b, hsv);
-
-		dataPointsHue.add(hsv[0]);
-
-		if (dataPointsHue.size() % fps == 0) {
-			float[] bandpassFilteredItems = butterworthBandpassFilter(dataPointsHue);
+	public int getHeartBeat(int fps) {
+		synchronized (monitor) {
+			float[] dataHue = new float[dataPointsHue.size()];
+			for (int i = 0; i < dataHue.length; i++) {
+				dataHue[i] = dataPointsHue.get(i);
+			}
+			float[] bandpassFilteredItems = butterworthBandpassFilter(dataHue);
 			float[] smoothedBandpassItems = medianSmoothing(bandpassFilteredItems);
 			int peakCount = countPeaks(smoothedBandpassItems);
 			double secondsPassed = smoothedBandpassItems.length / fps;
 			double percentage = secondsPassed / 60;
-			int bpm = (int) (peakCount / percentage);			
-			bpms.add(bpm);
+			int bpm = (int) (peakCount / percentage);
+			return bpm;
 		}
-
-	}
-
-	public int getHeartBeat() {
-		Collections.sort(bpms);
-		int bpm = bpms.get(bpms.size() / 2);
-		return bpm;
-	}
-
-	public int getFramesAnalyzed() {
-		return dataPointsHue.size();
 	}
 
 	private void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width,
@@ -122,23 +108,21 @@ public class HeartBeatDetection {
 			}
 		}
 	}
-	
-	
-	private static final int NZEROS = 8;
-	private static final int NPOLES = 8;
-	private double[] xv = new double[NZEROS + 1];
-	private double[] yv = new double[NPOLES + 1];
+
 	/**
 	 * Butterworth Bandpass filter
 	 * http://www-users.cs.york.ac.uk/~fisher/cgi-bin/mkfscript
 	 */
-	private float[] butterworthBandpassFilter(List<Float> inputData) {
-
+	private float[] butterworthBandpassFilter(float[] inputData) {
+		final int NZEROS = 8;
+		final int NPOLES = 8;
+		double[] xv = new double[NZEROS + 1];
+		double[] yv = new double[NPOLES + 1];
 		double dGain = 1.232232910e+02;
 
-		float[] outputData = new float[inputData.size()];
+		float[] outputData = new float[inputData.length];
 		for (int i = 0; i < outputData.length; i++) {
-			double input = inputData.get(i);
+			double input = inputData[i];
 			xv[0] = xv[1];
 			xv[1] = xv[2];
 			xv[2] = xv[3];
@@ -162,7 +146,7 @@ public class HeartBeatDetection {
 					+ (-20.9442560520 * yv[4]) + (21.7932169160 * yv[5])
 					+ (-14.5817197500 * yv[6]) + (5.7161939252 * yv[7]);
 
-			outputData[i] = (float)yv[8];
+			outputData[i] = (float) yv[8];
 		}
 		return outputData;
 	}
