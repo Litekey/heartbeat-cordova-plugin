@@ -115,6 +115,7 @@
         }
         buf+=bprow;
     }
+    
     r/=255*(float) (width*height/widthScaleFactor/heightScaleFactor);
     g/=255*(float) (width*height/widthScaleFactor/heightScaleFactor);
     b/=255*(float) (width*height/widthScaleFactor/heightScaleFactor);
@@ -128,7 +129,7 @@
     
     [self.dataPointsHue addObject:@(hue)];
     
-    if (self.dataPointsHue.count % self.fps == 0)
+    if (self.dataPointsHue.count == self.fps * self.seconds)
     {
         if (self.delegate)
         {
@@ -136,15 +137,13 @@
             
             NSArray *bandpassFilteredItems = butterworthBandpassFilter(self.dataPointsHue);
             NSArray *smoothedBandpassItems = medianSmoothing(bandpassFilteredItems);
-            int peakCount = countPeaks(smoothedBandpassItems);
-            
-            float secondsPassed = smoothedBandpassItems.count / self.fps;
-            float percentage = secondsPassed / 60;
-            float heartRate = peakCount / percentage;
+            int peak = medianPeak(smoothedBandpassItems);
+            int heartRate = 60 * self.fps / peak;
             
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self.delegate heartRateUpdate:heartRate atTime:displaySeconds];
             });
+        
         }
     }
     
@@ -213,16 +212,11 @@ NSArray * butterworthBandpassFilter(NSArray *inputData)
     return outputData;
 }
 
-int countPeaks(NSArray *inputData)
+int medianPeak(NSArray *inputData)
 {
-    if (inputData.count == 0)
-    {
-        return 0;
-    }
-    
-    int count = 0;
-    
-    for (int i = 3; i < inputData.count - 3;)
+    NSMutableArray *peaks = [[NSMutableArray alloc] init];
+    int count = 4;
+    for (int i = 3; i < inputData.count - 3; i++,count++)
     {
         if (inputData[i] > 0 &&
             [inputData[i] doubleValue] > [inputData[i-1] doubleValue] &&
@@ -233,16 +227,17 @@ int countPeaks(NSArray *inputData)
             [inputData[i] doubleValue] >= [inputData[i+3] doubleValue]
             )
         {
-            count = count + 1;
-            i = i + 4;
-        }
-        else
-        {
-            i = i + 1;
+            [peaks addObject:@(count)];
+            i += 3;
+            count = 3;
         }
     }
-    
-    return count;
+    [peaks setObject:@([peaks[0] integerValue] + count + 3) atIndexedSubscript: 0];
+    [peaks sortUsingComparator:^(NSNumber *a, NSNumber *b){
+        return [a compare:b];
+    }];
+    int medianPeak = (int)[peaks[peaks.count * 2 / 3] integerValue];
+    return medianPeak;
 }
 
 NSArray *medianSmoothing(NSArray *inputData)

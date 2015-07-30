@@ -2,10 +2,10 @@ package com.litekey.cordova.plugins.heartbeat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import android.hardware.Camera;
-import android.util.Log;
 
 public class HeartBeatDetection {
 
@@ -13,9 +13,6 @@ public class HeartBeatDetection {
 
 	private int width;
 	private int height;
-	private int widthScaleFactor;
-	private int heightScaleFactor;
-	private double scaleFactor;
 
 	private List<Float> dataPointsHue;
 	private int[] rgb;
@@ -23,10 +20,7 @@ public class HeartBeatDetection {
 	public HeartBeatDetection(Camera camera) {
 		width = camera.getParameters().getPreviewSize().width;
 		height = camera.getParameters().getPreviewSize().height;
-		widthScaleFactor = 4;
-		heightScaleFactor = 4;
 		dataPointsHue = new ArrayList<Float>();
-		scaleFactor = ((double) (width * height) / (double) (heightScaleFactor * widthScaleFactor));
 		rgb = new int[width * height];
 	}
 
@@ -37,27 +31,19 @@ public class HeartBeatDetection {
 
 			float r = 0, g = 0, b = 0;
 
-			for (int y = 0; y < height; y += heightScaleFactor) {
-				for (int x = 0; x < width; x += widthScaleFactor) {
-					r += (rgb[(y * width) + x] >> 16) & 0x0ff;
-					g += (rgb[(y * width) + x] >> 8) & 0x0ff;
-					b += rgb[(y * width) + x] & 0x0ff;
-				}
+			for (int i = 0; i < rgb.length; i++) {
+				r += (rgb[i] & 0xff0000) >> 16;
+				g += (rgb[i] & 0xff00) >> 8;
+				b += (rgb[i] & 0xff);
 			}
 
-			r /= 255.0 * scaleFactor;
-			g /= 255.0 * scaleFactor;
-			b /= 255.0 * scaleFactor;
-
-			Log.i("BPM: ", "r: " + r + ", g: " + g + ", b: " + b);
+			r /= 255 * rgb.length;
+			g /= 255 * rgb.length;
+			b /= 255 * rgb.length;
 
 			float[] hsv = new float[3];
 			RGBtoHSV(r, g, b, hsv);
 			dataPointsHue.add(hsv[0]);
-
-			Log.i("BPM: ", "h: " + hsv[0] + ", s: " + hsv[1] + ", v: " + hsv[2]);
-
-			Log.i("BPM", "Curren hue: " + hsv[0]);
 		}
 	}
 
@@ -69,25 +55,20 @@ public class HeartBeatDetection {
 			}
 			float[] bandpassFilteredItems = butterworthBandpassFilter(dataHue);
 			float[] smoothedBandpassItems = medianSmoothing(bandpassFilteredItems);
-			int peakCount = countPeaks(smoothedBandpassItems);
-			double secondsPassed = (double) smoothedBandpassItems.length
-					/ (double) fps;
-			double percentage = secondsPassed / 60.0;
-
-			Log.i("BPM", "seconds: " + secondsPassed);
-
-			int bpm = (int) (peakCount / percentage);
-			Log.i("BPM", "Curren bpm: " + bpm);
-
+			int peak = medianPeak(smoothedBandpassItems);
+			int bpm = 60 * fps / peak;
 			return bpm;
 		}
 	}
 
-	private void decodeYUV420SP(int[] rgb, byte[] yuv420sp, int width,
+	private void decodeYUV420SP(int[] rgba, byte[] yuv420sp, int width,
 			int height) {
 		final int frameSize = width * height;
+		int y1192, r, g, b, u, v, uvp;
 		for (int j = 0, yp = 0; j < height; j++) {
-			int uvp = frameSize + (j >> 1) * width, u = 0, v = 0;
+			uvp = frameSize + (j >> 1) * width;
+			u = 0;
+			v = 0;
 			for (int i = 0; i < width; i++, yp++) {
 				int y = (0xff & ((int) yuv420sp[yp])) - 16;
 				if (y < 0)
@@ -97,26 +78,17 @@ public class HeartBeatDetection {
 					u = (0xff & yuv420sp[uvp++]) - 128;
 				}
 
-				int y1192 = 1192 * y;
-				int r = (y1192 + 1634 * v);
-				int g = (y1192 - 833 * v - 400 * u);
-				int b = (y1192 + 2066 * u);
+				y1192 = 1192 * y;
+				r = (y1192 + 1634 * v);
+				g = (y1192 - 833 * v - 400 * u);
+				b = (y1192 + 2066 * u);
 
-				if (r < 0)
-					r = 0;
-				else if (r > 262143)
-					r = 262143;
-				if (g < 0)
-					g = 0;
-				else if (g > 262143)
-					g = 262143;
-				if (b < 0)
-					b = 0;
-				else if (b > 262143)
-					b = 262143;
+				r = r < 0 ? 0 : r < 262143 ? r : 262143;
+				g = r < 0 ? 0 : g < 262143 ? g : 262143;
+				b = r < 0 ? 0 : b < 262143 ? b : 262143;
 
-				rgb[yp] = 0xff000000 | ((r << 6) & 0xff0000)
-						| ((g >> 2) & 0xff00) | ((b >> 10) & 0xff);
+				rgb[yp] = ((r << 6) & 0xff0000) | ((g >> 2) & 0xff00)
+						| ((b >> 10) & 0xff);
 			}
 		}
 	}
@@ -187,25 +159,24 @@ public class HeartBeatDetection {
 		return outputData;
 	}
 
-	private int countPeaks(float[] inputData) {
-		if (inputData.length == 0) {
-			return 0;
-		}
-		int count = 0;
-		for (int i = 3; i < inputData.length - 3;) {
+	private int medianPeak(float[] inputData) {
+		List<Integer> peakList = new ArrayList<Integer>();
+		int count = 4;
+		for (int i = 3; i < inputData.length - 3; i++, count++) {
 			if (inputData[i] > 0 && inputData[i] > inputData[i - 1]
 					&& inputData[i] > inputData[i - 2]
 					&& inputData[i] > inputData[i - 3]
 					&& inputData[i] >= inputData[i + 1]
 					&& inputData[i] >= inputData[i + 2]
 					&& inputData[i] >= inputData[i + 3]) {
-				count = count + 1;
-				i = i + 4;
-			} else {
-				i = i + 1;
+				peakList.add(count);
+				i += 3;
+				count = 3;
 			}
 		}
-		return count;
+		peakList.set(0, peakList.get(0) + count + 2);		
+		Collections.sort(peakList);
+		return peakList.get(peakList.size() * 2 / 3);
 	}
 
 	private float[] medianSmoothing(float[] inputData) {

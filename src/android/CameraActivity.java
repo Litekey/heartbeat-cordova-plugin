@@ -1,12 +1,9 @@
 package com.litekey.cordova.plugins.heartbeat;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.cordova.CordovaActivity;
 
 import android.content.Intent;
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
@@ -29,7 +26,6 @@ public class CameraActivity extends CordovaActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-
 		seconds = getIntent().getExtras().getInt(HeartBeatPlugin.SECONDS_KEY);
 		fps = getIntent().getExtras().getInt(HeartBeatPlugin.FPS_KEY);
 
@@ -40,14 +36,13 @@ public class CameraActivity extends CordovaActivity {
 		try {
 			Camera.Parameters params = camera.getParameters();
 			params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-			//params.setPreviewFormat(ImageFormat.YV12);
 			params.setPreviewFpsRange(fps * 1000, fps * 1000);
 			Size size = params.getSupportedPreviewSizes().get(
-					params.getSupportedPreviewSizes().size() - 2);
+					params.getSupportedPreviewSizes().size() - 1);
 			params.setPreviewSize(size.width, size.height);
+			params.setPreviewFormat(ImageFormat.NV21);
 			camera.setParameters(params);
 			camera.setPreviewCallbackWithBuffer(previewCallback);
-
 		} catch (Exception e) {
 			Log.e(TAG, "Camera error", e);
 			setResult(RESULT_CANCELED);
@@ -116,18 +111,12 @@ public class CameraActivity extends CordovaActivity {
 	}
 
 	private int getBufferSize(int width, int height) {
-		int yStride = (int) Math.ceil(width / 16.0) * 16;
-		int uvStride = (int) Math.ceil((yStride / 2) / 16.0) * 16;
-		int ySize = yStride * height;
-		int uvSize = uvStride * height / 2;
-		int size = ySize + uvSize * 2;
-		return size;
+		return width * height * ImageFormat.getBitsPerPixel(ImageFormat.NV21);
 	}
 
 	private Camera.PreviewCallback previewCallback = new Camera.PreviewCallback() {
 
 		private int count = 0;
-		private List<Integer> bpms = new ArrayList<Integer>();
 
 		@Override
 		public void onPreviewFrame(byte[] buffer, Camera camera) {
@@ -135,13 +124,8 @@ public class CameraActivity extends CordovaActivity {
 			detection.analyzeFrame(buffer);
 			camera.addCallbackBuffer(buffer);
 			count++;
-
-			if (count % fps == 0) {
-				bpms.add(detection.getHeartBeat(fps));
-			}
 			if (count == (seconds * fps)) {
-				Collections.sort(bpms);
-				int bpm = bpms.get(bpms.size() / 2);
+				int bpm = detection.getHeartBeat(fps);				
 				Intent intent = new Intent();
 				intent.putExtra(HeartBeatPlugin.BPM_KEY, bpm);
 				CameraActivity.this.setResult(RESULT_OK, intent);

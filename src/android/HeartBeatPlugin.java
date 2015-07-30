@@ -24,7 +24,6 @@ public class HeartBeatPlugin extends CordovaPlugin {
     public boolean execute(String action, JSONArray data,
             CallbackContext callbackContext) throws JSONException {
         this.callback = callbackContext;
-
         if (action.equals("take")) {
             take(data.getInt(0), data.getInt(1));
             PluginResult r = new PluginResult(PluginResult.Status.NO_RESULT);
@@ -37,28 +36,20 @@ public class HeartBeatPlugin extends CordovaPlugin {
     }
 
     private void take(final int seconds, final int fps) {
-        this.cordova.getThreadPool().execute(new Runnable() {
-
-            @Override
-            public void run() {
-                Intent intent = new Intent(cordova.getActivity()
-                        .getApplicationContext(), CameraActivity.class);
-                intent.addCategory(Intent.CATEGORY_DEFAULT);
-                intent.setPackage(cordova.getActivity().getApplicationContext()
-                        .getPackageName());
-                intent.putExtra(SECONDS_KEY, seconds);
-                intent.putExtra(FPS_KEY, fps);
-                cordova.startActivityForResult(
-                        (CordovaPlugin) HeartBeatPlugin.this, intent,
-                        REQUEST_CODE);
-            }
-        });
-
+        Intent intent = new Intent(cordova.getActivity()
+                .getApplicationContext(), CameraActivity.class);
+        intent.addCategory(Intent.CATEGORY_DEFAULT);
+        intent.setPackage(cordova.getActivity().getApplicationContext()
+                .getPackageName());
+        intent.putExtra(SECONDS_KEY, seconds);
+        intent.putExtra(FPS_KEY, fps);
+        cordova.startActivityForResult((CordovaPlugin) HeartBeatPlugin.this,
+                intent, REQUEST_CODE);
     }
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        super.onActivityResult(requestCode, resultCode, intent);        
+        super.onActivityResult(requestCode, resultCode, intent);
         if (requestCode == REQUEST_CODE) {
             if (resultCode == Activity.RESULT_OK) {
                 int bpm = intent.getIntExtra(BPM_KEY, 0);

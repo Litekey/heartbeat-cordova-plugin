@@ -35,11 +35,11 @@ public class ForegroundCameraPreview extends SurfaceView implements SurfaceHolde
     }
     
 
-    public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
+    public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {        
         if (holder.getSurface() == null){
           return;
         }
-        try {
+        try {           
             camera.setPreviewDisplay(holder);
             camera.startPreview();
         } catch (Exception e){
